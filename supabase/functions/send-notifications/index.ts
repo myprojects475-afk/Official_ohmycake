@@ -1,0 +1,23 @@
+import { corsHeaders, json } from "../_shared/auth.ts";
+
+async function sendEmail(to:string,subject:string,text:string){
+  const key=Deno.env.get("RESEND_API_KEY"); const from=Deno.env.get("EMAIL_FROM"); if(!key||!from)return {sent:false,skipped:true,reason:"Email provider not configured"};
+  const r=await fetch("https://api.resend.com/emails",{method:"POST",headers:{Authorization:`Bearer ${key}`,"Content-Type":"application/json"},body:JSON.stringify({from,to,subject,text})}); const d=await r.json(); if(!r.ok)throw new Error(d?.message||"Email provider failed"); return {sent:true};
+}
+async function sendWhatsApp(to:string,text:string){
+  const provider=Deno.env.get("WHATSAPP_PROVIDER"); if(!provider)return {sent:false,skipped:true,reason:"WhatsApp provider not configured"};
+  if(provider.toLowerCase()==="meta"){
+    const token=Deno.env.get("WHATSAPP_ACCESS_TOKEN"),phoneId=Deno.env.get("WHATSAPP_PHONE_NUMBER_ID"); if(!token||!phoneId)return {sent:false,skipped:true,reason:"Meta WhatsApp secrets not configured"};
+    const r=await fetch(`https://graph.facebook.com/v20.0/${phoneId}/messages`,{method:"POST",headers:{Authorization:`Bearer ${token}`,"Content-Type":"application/json"},body:JSON.stringify({messaging_product:"whatsapp",to,type:"text",text:{body:text}})});const d=await r.json();if(!r.ok)throw new Error(d?.error?.message||"WhatsApp provider failed");return{sent:true};
+  }
+  throw new Error(`Unsupported WhatsApp provider: ${provider}`);
+}
+function orderText(o:any,items:any[]){return [`Order ${o.OrderID}`,`Customer: ${o.CustomerName}`,`Phone: ${o.Phone}`,`Email: ${o.Email}`,`Fulfillment: ${o.FulfillmentType}`,o.Address?`Address: ${o.Address}`:"Pickup",`Needed: ${o.DateNeeded} ${o.TimeNeeded}`,`Occasion: ${o.Occasion}`,`Payment: ${o.PaymentStatus}`,`Total: ₹${o.TotalAmount}`,`Items:`,...items.map(i=>`- ${i.ProductID}${i.Weight?` ${i.Weight}g`:""} × ${i.Qty} = ₹${i.ItemPrice}`)].join("\n")}
+function customText(r:any){return [`Custom cake request ${r.RequestID}`,`Customer: ${r.CustomerName}`,`Phone: ${r.Phone}`,`Email: ${r.Email}`,`Occasion: ${r.Occasion}`,`Flavor: ${r.Flavor}`,`Quantity: ${r.Qty}`,`Weight: ${r.Weight||"—"}`,`Needed: ${r.DateNeeded} ${r.TimeNeeded}`,`Fulfillment: ${r.FulfillmentType}`,r.Address?`Address: ${r.Address}`:"Pickup",`Description: ${r.Description}`].join("\n")}
+Deno.serve(async req=>{if(req.method==="OPTIONS")return new Response("ok",{headers:corsHeaders()});try{if(req.headers.get("X-Notification-Secret")!==Deno.env.get("NOTIFICATION_INTERNAL_SECRET"))return json({error:"Unauthorized"},401);const body=await req.json();const type=body.type;const db=await import("npm:@supabase/supabase-js@2").then(m=>m.createClient(Deno.env.get("SUPABASE_URL")!,Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,{auth:{persistSession:false,autoRefreshToken:false}}));const settings=(await db.from("Settings").select("Key,Value")).data||[];const setting=(k:string)=>settings.find((x:any)=>x.Key===k)?.Value||"";const shopEmail=setting("ShopNotificationEmail"),shopPhone=setting("ShopNotificationPhone");let customerMessage="",shopMessage="",customerEmail="",subject="";
+if(type==="order"){const o=body.order;const items=body.items||[];shopMessage=orderText(o,items);customerMessage=`Thank you for your order ${o.OrderID}.\nNeeded: ${o.DateNeeded} ${o.TimeNeeded}\nTotal: ₹${o.TotalAmount}\nPayment: ${o.PaymentStatus}\nWe look forward to serving you!`;customerEmail=o.Email;subject=`Order confirmation ${o.OrderID}`}
+else if(type==="custom"){const r=body.request;shopMessage=customText(r);customerMessage=`We received your custom cake request ${r.RequestID}.\nRequested for: ${r.DateNeeded} ${r.TimeNeeded}\nOur team will contact you to discuss the design, price and payment.`;customerEmail=r.Email;subject=`Custom cake request received ${r.RequestID}`}
+else return json({error:"Unknown notification type."},400);
+const results:any={};if(customerEmail)results.customerEmail=await sendEmail(customerEmail,subject,customerMessage);if(shopEmail)results.shopEmail=await sendEmail(shopEmail,`Shop alert: ${subject}`,shopMessage);if(body.type==="order"?body.order.Phone:body.request.Phone)results.customerWhatsApp=await sendWhatsApp(normalizePhone(body.type==="order"?body.order.Phone:body.request.Phone),customerMessage);if(shopPhone)results.shopWhatsApp=await sendWhatsApp(normalizePhone(shopPhone),shopMessage);return json({ok:true,results});}catch(e){return json({error:e instanceof Error?e.message:"Notification failed."},400)}});
+function normalizePhone(v:string){return String(v||"").replace(/[^0-9]/g,"")}
+function oPhone(v:string){return Boolean(String(v||"").trim())}

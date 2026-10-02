@@ -1,0 +1,21 @@
+OH MY CAKE - UPDATED PROJECT
+
+Changes included:
+1. Fixed Admin > Offers / Coupons blank page.
+2. Fixed offer create/update UI to use the offer object returned by api.js.
+3. Added robust offer validation and loading/saving states.
+4. Added working Admin > Products & Stock > Add stock entry flow.
+5. Added Weight, Units Available, Status and Actions columns to the cake stock table.
+6. Added stock validation for 500g steps and duplicate size protection.
+
+Run the frontend:
+  cd frontend
+  npm install
+  npm run dev
+
+Then open the local URL shown by Vite, normally:
+  http://localhost:5173/admin
+
+Supabase:
+- Existing frontend .env is retained from the uploaded project.
+- Existing admin-api Edge Function is retained; no new database table is required for these UI changes.

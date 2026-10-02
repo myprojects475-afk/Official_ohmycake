@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="900" height="700" viewBox="0 0 900 700">
+<defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#f3dfbf"/><stop offset="1" stop-color="#d5a56c"/></linearGradient></defs>
+<rect width="900" height="700" fill="url(#g)"/><circle cx="740" cy="120" r="130" fill="#ffffff" opacity=".28"/><circle cx="120" cy="610" r="180" fill="#ffffff" opacity=".18"/>
+<ellipse cx="450" cy="555" rx="255" ry="32" fill="#fff" opacity=".65"/>
+<rect x="245" y="320" width="410" height="205" rx="35" fill="#fff" opacity=".85"/>
+<ellipse cx="450" cy="320" rx="205" ry="72" fill="#fff" opacity=".96"/>
+<path d="M290 320 Q450 230 610 320" fill="none" stroke="#c86f72" stroke-width="18" stroke-linecap="round"/>
+<circle cx="390" cy="285" r="20" fill="#c86f72"/><circle cx="450" cy="260" r="20" fill="#d89b76"/><circle cx="510" cy="285" r="20" fill="#c86f72"/>
+<text x="450" y="610" text-anchor="middle" font-family="Arial" font-size="38" font-weight="700" fill="#4a3029">Oatmeal Raisin</text>
+</svg>
